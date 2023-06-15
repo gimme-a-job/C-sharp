@@ -1,3 +1,554 @@
+        // Web.configの設定取得用
+        public const string Value_DrinkSrv_AreaId = "Value_DrinkSrv_AreaId"; // お茶出しを表示するエリアID
+        
+        /// <summary>
+        /// フロアオプションの設定 // 2023.05.29 「お茶出し」表示・非表示不具合対応 追加
+        /// </summary>
+        protected void setFloorOption(Boolean isGuestEntry, string argFloor_Id)        
+        {
+            Boolean old_isViewGenOrVIP = Panel_isVIP.Visible; // 2023.06.13 追加
+            Boolean old_isViewDrinkSrv = Panel_DrinkSrv_VIP.Visible;
+
+            // 初期表示
+            //Panel_isVIP.Visible = false; // 一般／VIP // やらない方が良さげ(31F⇒19F変更時に上手くない様子)
+            Panel_DrinkSrv_VIP.Visible = false; // お茶出し(VIPのみ)
+                       
+
+            #region お茶出し
+
+            // 現状"Panel_isVIP"(一般／VIP)の".visible"については"setBuildingOption()"でやってますので、
+            // (続き) 今後「出迎え」「見送り」「駐車場」を全て非表示で「お茶出し」だけ表示する、みたいなことをやる場合は、
+            // (続き) 今のままでは「お茶出し」が非表示になる可能性もあります。
+
+            if (true) // フロアマスタに設定画面を付す場合、この辺りの条件詰める感じになると思います。
+            {
+                if (true) // フロアマスタに設定画面を付す場合、この辺りの条件詰める感じになると思います。
+                {
+                    #region 会議室予約なら
+                    if (!isGuestEntry)
+                    {
+                        if (isDrinkSrvFloor(argFloor_Id))
+                        {
+                            Panel_isVIP.Visible = true;
+
+                            Panel_DrinkSrv_VIP.Visible = true;
+                        }
+
+                    }
+                    #endregion 会議室予約
+
+                    #region 来訪者登録なら // 2023.05.24 追加
+                    else
+                    {
+                        // 来訪者登録時にお茶出しを表示するかどうか
+                        bool isDrinkSrv;
+                        //// Web.configから設定をお取得（取得失敗時はfalse「表示しない」)）
+                        //if (!Boolean.TryParse(ConfigurationManager.AppSettings[Value_GuestEntry_isDrinkSrv], out isDrinkSrv))
+                        isDrinkSrv = false;
+                        if (isDrinkSrv)
+                        {
+                            Panel_isVIP.Visible = true;
+
+                            Panel_DrinkSrv_VIP.Visible = true;
+                        }
+                    }
+                    #endregion 来訪者登録
+
+                }
+            }
+
+            #endregion お茶出し
+
+
+            #region 固定値ドロップダウン
+
+            #region 一般／VIP (「お茶出し」のみ表示で、出迎え・見送り・駐車場がオフの場合に対応) 2023.06.13 追加
+            if (!(IsPostBack && old_isViewGenOrVIP && Panel_isVIP.Visible)) // ← (「お茶出し」のみ表示で、出迎え・見送り・駐車場がオフの場合に対応)
+            {
+                RadioButtonList_isEvent.Items.Clear();
+
+                setYesOrNo(
+                    radioButtonList: RadioButtonList_isEvent,
+                    argResourceKeys: new List<string>() {
+                        "Text_NoApply","Text_Apply"
+                    });
+
+            }
+            #endregion 一般／VIP
+
+            #region お茶出し
+
+            #region if条件(従来通り、「更新」以外はポストバック時に初期化させたい場合)
+            //if
+            //(
+            //    modeNew ||
+            //    modeRead ||
+            //    ( modeEdit && !(IsPostBack && old_isViewDrinkSrv && Panel_DrinkSrv_VIP.Visible)) ||
+            //    isGuestEntry
+            //)
+            #endregion if条件(従来通り、「更新」以外はポストバック時に初期化させたい場合)
+            if (!(IsPostBack && old_isViewDrinkSrv && Panel_DrinkSrv_VIP.Visible)) // ← 入力済みの状態で会議室変更等をした際に、入力を残すため
+            {
+                DropDownList_DrinkSrv_DrinkMenu_VIP.Items.Clear(); // 給茶メニュー(VIPのみ)
+
+                RadioButtonList_isDrinkSrv_VIP.Items.Clear(); // お茶出しするかどうか(VIPのみ)
+                RadioButtonList_DrinkSrv_DeptInChrg_VIP.Items.Clear(); // お茶出し担当部署(VIPのみ)
+
+                if (Panel_DrinkSrv_VIP.Visible)
+                {
+                    // 出迎え要／不要
+                    setYesOrNo(RadioButtonList_isDrinkSrv_VIP);
+
+                    #region 対応者(対応部署)
+
+                    List<string> dept = new List<string>() {
+                    "Text_DeptInChrg_Rcpt",
+                    "Text_DeptInChrg_Sales"
+                    };
+
+                    // ラジオボタンセット
+                    setYesOrNo(RadioButtonList_DrinkSrv_DeptInChrg_VIP, dept);
+
+                    #endregion 対応者(対応部署)
+
+                    #region 給茶メニュー(SYS_DIVISIONから取得する場合) // 2023.05.15 追加
+
+                    setDropDownListFrmSysDiv(
+                        pDivisionId: DIVISION_ID_DRINK_MENU,
+                        argDropDownList: DropDownList_DrinkSrv_DrinkMenu_VIP,
+                        //insBlankRow: false
+                        insBlankRow: true
+                        );
+
+                    #endregion
+
+                }
+
+            }
+
+            #endregion お茶出し
+
+            #endregion 固定値ドロップダウン
+
+
+            #region 表示文字列変更 // 2023.06.06 追加
+
+            #region 見送り // 2023.06.06 追加
+
+            setLiteralText_SndOff(); // 2023.06.06 追加
+
+            #endregion 見送り
+
+            #endregion 表示文字列変更
+
+        }
+
+        /// <summary>
+        /// ビルオプションの設定（一部抜粋）
+        /// </summary>
+        protected void setBuildingOption(Boolean isGuestEntry, int argBuilding_Id)
+        {
+
+            DataTable dtBuildingOption = null;
+            
+            dtBuildingOption = Rsrv_Rgstr.GetBuildingOptionById(argBuilding_Id);
+
+            // 初期表示
+            
+            //Panel_isVIP.Visible = false; // 「お茶出し」のみ有効の場合に備えて 2023.06.12  コメントアウト
+            Panel_isVIP.Visible = Panel_DrinkSrv_VIP.Visible; // 「お茶出し」のみ有効の場合に備えて 2023.06.12 追加
+            Panel_PickUp_VIP.Visible = false; // 出迎え(VIPのみ) 新様式 // 2023.05 追加
+            //Panel_DrinkSrv_VIP.Visible = false; // お茶出し(VIPのみ) // 2023.05.10 追加 → "setFloorOption()"に移動
+            Panel_SendOff_VIP.Visible = false; // 見送り(VIPのみ) // 2023.05.10 追加                        
+            
+            DropDownList_PickUp_PckUpFrm_VIP.Items.Clear(); // 出迎え(VIPのみ) 新様式 // 2023.05 追加
+            //DropDownList_DrinkSrv_DrinkMenu_VIP.Items.Clear(); // お茶出し(VIPのみ) // 2023.05.11 追加 → "setFloorOption()"に移動
+            DropDownList_SendOff_SndOffTo_VIP.Items.Clear(); // 見送り(VIPのみ) // 2023.05.10 追加            
+
+            for (int i = 0; i < dtBuildingOption.Rows.Count; i++)
+            {               
+
+                #region 出迎え・見送り場所 // 2023.05.09 追加 → 2023.06.12 "国旗掲揚"に移動のためコメントアウト
+
+                //if (true) // 「ビル情報編集画面」に項目追加する際は、この辺りに条件が入ると思われます。
+                //{
+                //    if ((i == 0) == true) // 「ビル情報編集画面」に項目追加する際は、この辺りに条件が入ると思われます。
+                //    {
+                #region 会議室予約なら →"国旗掲揚"に移動
+                //if (!isGuestEntry)
+                //{
+                //    Panel_isVIP.Visible = true;
+
+                //    Panel_PickUp_VIP.Visible = true;
+                //    Panel_SendOff_VIP.Visible = true;
+
+                //}
+                #endregion 会議室予約
+
+                #region 来訪者登録なら // 2023.05.26 追加 →"国旗掲揚"に移動
+                //else
+                //{
+                #region 出迎え
+
+                //// 来訪者登録時に出迎えを表示するかどうか
+                //bool isPickUp;
+                ////// Web.configから設定をお取得（取得失敗時はtrue「表示する」)）
+                ////if (!Boolean.TryParse(ConfigurationManager.AppSettings[Value_GuestEntry_isPickUp], out isPickUp)) 
+                //    isPickUp = true;
+                //if (isPickUp)
+                //{
+                //    Panel_isVIP.Visible = true;
+
+                //    Panel_PickUp_VIP.Visible = true;
+                //}
+
+                #endregion 出迎え
+
+                #region 見送り
+
+                //// 来訪者登録時に見送りを表示するかどうか
+                //bool isSendOff;
+                ////// Web.configから設定をお取得（取得失敗時はtrue「表示する」)）
+                ////if (!Boolean.TryParse(ConfigurationManager.AppSettings[Value_GuestEntry_isSendOff], out isSendOff)) 
+                //    isSendOff = true;
+                //if (isSendOff)
+                //{
+                //    Panel_isVIP.Visible = true;
+
+                //    Panel_SendOff_VIP.Visible = true;
+                //}
+
+                #endregion 見送り
+                //}
+                #endregion 来訪者登録
+                //    }
+                //}
+
+                //if ((BuildingOption_Value_Name_MeetingPlace.Equals(dtBuildingOption.Rows[i]["VALUE_NAME"])) == true)
+                //{
+                //    if ((string.IsNullOrEmpty(dtBuildingOption.Rows[i]["VALUE"].ToString())) == false)
+                //    {
+                //        ListItem item_Meeting = new ListItem();
+                //        item_Meeting.Text = dtBuildingOption.Rows[i]["VALUE"].ToString();
+                //        item_Meeting.Value = dtBuildingOption.Rows[i]["VALUE_ID"].ToString();
+                //        DropDownList_PickUp_PckUpFrm_VIP.Items.Add(item_Meeting);
+                //        DropDownList_SendOff_SndOffTo_VIP.Items.Add(item_Meeting);
+                //    }
+                //}
+
+                // ドロップダウンアイテムを[MST_BUILDING_OPTION]から取得する場合（ビル情報設定画面で編集する様な改修をする場合など）
+                //setDropDownListFrmBldgOpt(valueName:BuildingOption_Value_Name_MeetingPlace,
+                //    dr: dtBuildingOption.Rows[i],
+                //    dropDownLists: new List<DropDownList>() { DropDownList_PickUp_PckUpFrm_VIP, DropDownList_SendOff_SndOffTo_VIP }
+                //    );
+
+
+                #endregion 出迎え・見送り場所
+
+                #region お茶出し // 2023.05.11 追加 → "setFloorOption()"に移動
+
+                //if (true) // setFloorOptionみたいなメソッドを作成して、この辺りの条件詰めるのもありだと思います。
+                //{
+                //    if ((i == 0) == true) // setFloorOptionみたいなメソッドを作成して、この辺りの条件詰めるのもありだと思います。
+                //    {
+                #region 会議室予約なら
+                //if (!isGuestEntry)
+                //{
+                //    // 新規予約ならリクエストにFloorIdが入っている前提
+                //    var aryFloorId = Page.Request.Form.GetValues(Rsrv_Rgstr.REQUEST_NAME_FloorId);
+
+                //    // 予約済み内容の更新・参照時はHiddenFieldの方が使える前提
+                //    if (aryFloorId == null) aryFloorId = new string[] { HiddenField_FloorId_For_Edit.Value };
+
+                //    if (isDrinkSrvFloor(aryFloorId[0]))
+                //    {
+                //        Panel_isVIP.Visible = true;
+
+                //        Panel_DrinkSrv_VIP.Visible = true;
+                //    }
+                //    // 判定に使うAreaIdの取得の仕方が上手くないとは思いますので、別の取得方法にしてしまってOKです。
+
+                //}
+                #endregion 会議室予約
+
+                #region 来訪者登録なら // 2023.05.24 追加
+                //else
+                //{
+                //    // 来訪者登録時にお茶出しを表示するかどうか
+                //    bool isDrinkSrv;
+                //    // Web.configから設定をお取得（取得失敗時はfalse「表示しない」)）
+                //    if (!Boolean.TryParse(ConfigurationManager.AppSettings[Value_GuestEntry_isDrinkSrv], out isDrinkSrv)) isDrinkSrv = false;
+                //    if (isDrinkSrv)
+                //    {
+                //        Panel_isVIP.Visible = true;
+
+                //        Panel_DrinkSrv_VIP.Visible = true;
+                //    }
+                //}
+                #endregion 来訪者登録
+
+                //    }
+                //}
+
+                //// ドロップダウンアイテムを[MST_BUILDING_OPTION]から取得する場合（ビル情報設定画面で編集する様な改修をする場合など）
+                ////setDropDownListFrmBldgOpt(valueName: BuildingOption_Value_Name_DrinkMenu,
+                ////    dr: dtBuildingOption.Rows[i],
+                ////    dropDownLists: new List<DropDownList>() { DropDownList_DrinkSrv_DrinkMenu_VIP }
+                ////    );
+
+                #endregion お茶出し
+
+                //#region 国旗掲揚
+                //#region 出迎え(VIPのみ) 旧様式
+                #region 出迎え(新旧様式)・見送り
+
+                // ビルオプションテーブルのi番目が「国旗掲揚の表示・非表示」なら
+                if ((BuildingOption_Value_Name_showCountryFlag.Equals(dtBuildingOption.Rows[i]["VALUE_NAME"])) == true)
+                {
+                    if (("1".Equals(dtBuildingOption.Rows[i]["VALUE"])) == true)
+                    {
+
+                        #region 出迎え(新様式)・見送り // 2023.06.12 追加
+
+                        // 「国旗掲揚」のカラムを流用して、「出迎え」「見送り」の表示・非表示を設定します
+
+                        #region 会議室予約なら
+                        if (!isGuestEntry)
+                        {
+                            Panel_isVIP.Visible = true;
+
+                            Panel_PickUp_VIP.Visible = true;
+                            Panel_SendOff_VIP.Visible = true;
+
+                        }
+                        #endregion 会議室予約
+
+                        #region 来訪者登録なら
+                        else
+                        {
+                            #region 出迎え
+
+                            // 来訪者登録時に出迎えを表示するかどうか
+                            bool isPickUp;
+                            //// Web.configから設定をお取得（取得失敗時はtrue「表示する」)）
+                            //if (!Boolean.TryParse(ConfigurationManager.AppSettings[Value_GuestEntry_isPickUp], out isPickUp)) 
+                            isPickUp = true;
+                            if (isPickUp)
+                            {
+                                Panel_isVIP.Visible = true;
+
+                                Panel_PickUp_VIP.Visible = true;
+                            }
+
+                            #endregion 出迎え
+
+                            #region 見送り
+
+                            // 来訪者登録時に見送りを表示するかどうか
+                            bool isSendOff;
+                            //// Web.configから設定をお取得（取得失敗時はtrue「表示する」)）
+                            //if (!Boolean.TryParse(ConfigurationManager.AppSettings[Value_GuestEntry_isSendOff], out isSendOff)) 
+                            isSendOff = true;
+                            if (isSendOff)
+                            {
+                                Panel_isVIP.Visible = true;
+
+                                Panel_SendOff_VIP.Visible = true;
+                            }
+
+                            #endregion 見送り
+                        }
+                        #endregion 来訪者登録
+
+                        #endregion 出迎え(新様式)・見送り
+
+                        #region 出迎え(旧国旗掲揚) // 2023.06.12   コメントアウト
+                        //Panel_isVIP.Visible = true;                                              
+
+                        //Panel_CountryFlag.Visible = true;
+                        #endregion 出迎え(旧国旗掲揚)
+
+                    }
+                }
+                             
+               
+                //#endregion 国旗掲揚
+                #endregion 出迎え(VIPのみ) 旧様式
+
+                
+
+            #region パネルの表示非表示
+
+            if (Panel_Visitor_Information.Visible == true && (
+                Panel_PickUp_VIP.Visible || // 2023.05.16 追加
+                Panel_DrinkSrv_VIP.Visible || // 2023.05.16 追加 ("setFloorOption()"との兼ね合いで残している)
+                Panel_SendOff_VIP.Visible || // 2023.05.16 追加
+                )
+            )
+            {
+                Panel_isVIP.Visible = true;
+            }
+            else
+            {
+                Panel_isVIP.Visible = false;
+            }
+
+            #endregion パネルの表示非表示
+
+            #region 固定値ドロップダウン
+
+            
+            RadioButtonList_isPickUp_VIP.Items.Clear(); // 2023.05.09 追加
+            RadioButtonList_PickUp_DeptInChrg_VIP.Items.Clear(); // 2023.05.10 追加
+
+            //RadioButtonList_isDrinkSrv_VIP.Items.Clear(); // 2023.05.10 追加 → "setFloorOption()"に移動
+            //RadioButtonList_DrinkSrv_DeptInChrg_VIP.Items.Clear(); // 2023.05.10 追加 → "setFloorOption()"に移動
+
+            RadioButtonList_isSendOff_VIP.Items.Clear(); // 2023.05.10 追加
+            RadioButtonList_SendOff_DeptInChrg_VIP.Items.Clear(); // 2023.05.10 追加
+            
+                      
+            //#region 国旗掲揚・駐車場
+            #region 出迎え(新旧様式)・お茶出し・見送り・駐車場
+
+            if (Panel_isVIP.Visible)
+            {
+                ListItem item; 
+
+                item = new ListItem ();
+                item.Text = HttpContext.GetGlobalResourceObject("Common", "Text_NoApply").ToString();
+                item.Value = "0";
+                item.Selected = true;
+                RadioButtonList_isEvent.Items.Add(item);
+
+                item = new ListItem();
+                item.Text = HttpContext.GetGlobalResourceObject("Common", "Text_Apply").ToString();
+                item.Value = "1";
+                RadioButtonList_isEvent.Items.Add(item);
+
+                #region 出迎え(新様式) // 2023.05.09 追加
+                if (Panel_PickUp_VIP.Visible)
+                {
+                    // 出迎え要／不要
+                    setYesOrNo(RadioButtonList_isPickUp_VIP);
+
+                    #region 対応者(対応部署)
+
+                    #region (没)列挙型を使う場合
+                    //List<string> dept = new List<string>();
+
+                    //// 受付
+                    //string rcpt = HttpContext.GetGlobalResourceObject("Common", "Text_DeptInChrg_Rcpt").ToString()
+                    //    + HttpContext.GetGlobalResourceObject("Common", "Text_DeptInChrg_BizHrs").ToString();
+                    //dept.Add(rcpt);
+
+                    //// 営業部署
+                    //string sales = HttpContext.GetGlobalResourceObject("Common", "Text_DeptInChrg_Sales").ToString();
+                    //dept.Add(sales);
+                    #endregion ぼつ
+
+                    List<string> dept = new List<string>() {
+                    "Text_DeptInChrg_Rcpt",
+                    "Text_DeptInChrg_Sales"
+                    };
+
+                    // ラジオボタンセット
+                    setYesOrNo(RadioButtonList_PickUp_DeptInChrg_VIP, dept);
+
+                    #endregion 対応者(対応部署)
+
+                    #region 出迎え場所(SYS_DIVISIONから取得する場合) // 2023.05.15 追加
+
+                    setDropDownListFrmSysDiv(
+                        pDivisionId: DIVISION_ID_MEETING_PLACE, 
+                        argDropDownList: DropDownList_PickUp_PckUpFrm_VIP,
+                        //insBlankRow: false
+                        insBlankRow: true
+                        );
+
+                    #endregion
+
+                }
+
+                #endregion 出迎え(新様式)
+
+                #region お茶出し // 2023.05.10 追加 → "setFloorOption()"に移動
+                //if (Panel_DrinkSrv_VIP.Visible)
+                //{
+                //    // 出迎え要／不要
+                //    setYesOrNo(RadioButtonList_isDrinkSrv_VIP);
+
+
+                    #region 対応者(対応部署)
+
+                    //List<string> dept = new List<string>() {
+                    //"Text_DeptInChrg_Rcpt",
+                    //"Text_DeptInChrg_Sales"
+                    //};
+
+                    //// ラジオボタンセット
+                    //setYesOrNo(RadioButtonList_DrinkSrv_DeptInChrg_VIP, dept);
+
+                    #endregion 対応者(対応部署)
+
+                    #region 給茶メニュー(SYS_DIVISIONから取得する場合) // 2023.05.15 追加
+
+                    //setDropDownListFrmSysDiv(
+                    //    pDivisionId: DIVISION_ID_DRINK_MENU, 
+                    //    argDropDownList: DropDownList_DrinkSrv_DrinkMenu_VIP,
+                    //    //insBlankRow: false
+                    //    insBlankRow: true
+                    //    );
+
+                    #endregion
+
+                //}
+
+                #endregion お茶出し
+
+                #region 見送り // 2023.05.10 追加
+                if (Panel_SendOff_VIP.Visible)
+                {
+                    // 出迎え要／不要
+                    setYesOrNo(RadioButtonList_isSendOff_VIP);
+
+
+                    #region 対応者(対応部署)
+                                      
+                    List<string> dept = new List<string>() {
+                    "Text_DeptInChrg_Rcpt",
+                    "Text_DeptInChrg_Sales"
+                    };
+
+                    // ラジオボタンセット
+                    setYesOrNo(RadioButtonList_SendOff_DeptInChrg_VIP, dept);
+
+                    #endregion 対応者(対応部署)
+
+                    #region 見送り場所(SYS_DIVISIONから取得する場合) // 2023.05.15 追加
+
+                    setDropDownListFrmSysDiv(
+                        pDivisionId: DIVISION_ID_MEETING_PLACE,
+                        argDropDownList: DropDownList_SendOff_SndOffTo_VIP,
+                        //insBlankRow: false
+                        insBlankRow: true
+                        );
+
+                    #endregion
+
+                }
+
+                #endregion 見送り
+                
+            }
+
+            //#endregion 国旗掲揚・駐車場
+            #endregion 出迎え(旧様式)・駐車場            
+
+            #endregion 固定値ドロップダウン
+
+        }
+
         #region 予約情報への登録・更新関係 // 2023.05.12 追加
 
         /// <summary>
